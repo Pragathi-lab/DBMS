@@ -1,0 +1,112 @@
+
+Creating tables:
+1] Suppliers:
+create table supplier(
+ sid int primary key, sname varchar(30), scity varchar(30)
+ );
+
+2] Parts:
+create table parts(
+ pid int primary key, pname varchar(30),
+color varchar(30)
+ );
+
+3]Catalog:
+create table catalog ( sid int ,
+ pid int , cost real,
+ foreign key(sid) references supplier(sid) , foreign key(pid) references parts(pid)
+ );
+ 
+
+  
+Inserting values:
+
+1]Suppliers
+
+insert into supplier values(10001,'Acme Widget','Bangalore');
+insert into supplier values(10002,'Johns','Kolkata');
+insert into supplier values(10003,'Vimal','Mumbai');
+insert into supplier values(10004,'Reliance','Delhi');
+ 
+
+2]Parts
+
+insert into parts values(20001,'Book','Red');
+insert into parts values(20002,'Pen','Red');
+insert into parts values(20003,'Pencil','Green');
+insert into parts values(20004,'Mobile','Green');
+insert into parts values(20005,'Charger','Black');
+
+3]Catalog
+
+insert into catalog values(10001,20001,10);
+insert into catalog values(10001,20002,10);
+insert into catalog values(10001,20003,30);
+insert into catalog values(10001,20004,10);
+insert into catalog values(10001,20005,10);
+insert into catalog values(10002,20001,10);
+insert into catalog values(10002,20002,20);
+insert into catalog values(10003,20003,30);
+insert into catalog values(10004,20003,40);
+
+
+4]Find the pnames of parts for which there is some supplier.
+SELECT DISTINCT p.pname
+FROM parts p
+JOIN catalog c ON p.pid = c.pid;
+
+5]SELECT s.sname
+FROM supplier s
+WHERE (
+    SELECT COUNT(DISTINCT p.pid)
+    FROM parts p
+) = (
+    SELECT COUNT(DISTINCT c.pid)
+    FROM catalog c
+    WHERE c.sid = s.sid
+);
+
+6]SELECT s.sname
+FROM supplier s
+WHERE NOT EXISTS (
+    SELECT p.pid
+    FROM parts p
+    WHERE p.color = 'Red'
+    AND NOT EXISTS (
+        SELECT c.sid
+        FROM catalog c
+        WHERE c.sid = s.sid AND c.pid = p.pid
+    )
+);
+
+7]SELECT p.pname
+FROM parts p
+WHERE p.pid IN (
+    SELECT c.pid
+    FROM catalog c
+    WHERE c.sid = 10001  -- Acme Widget's supplier ID
+)
+AND p.pid NOT IN (
+    SELECT c.pid
+    FROM catalog c
+    WHERE c.sid != 10001  -- Exclude parts supplied by any other supplier
+);
+
+8]SELECT DISTINCT c.sid
+FROM catalog c
+WHERE c.cost > (
+    SELECT AVG(c1.cost)
+    FROM catalog c1
+    WHERE c1.pid = c.pid
+);
+
+SELECT p.pname, s.sname
+FROM catalog c
+JOIN parts p ON c.pid = p.pid
+JOIN supplier s ON c.sid = s.sid
+WHERE c.cost = (
+    SELECT MAX(c1.cost)
+    FROM catalog c1
+    WHERE c1.pid = c.pid
+)
+ORDER BY p.pname;
