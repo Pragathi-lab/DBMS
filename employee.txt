@@ -1,0 +1,141 @@
+CREATE DATABASE Employee;
+USE Employee;
+
+CREATE TABLE dep (
+    depno INT PRIMARY KEY,      
+    dloc VARCHAR(255),          
+    depname VARCHAR(255)        
+);
+
+CREATE TABLE emp (
+    empno INT PRIMARY KEY,      
+    ename VARCHAR(255),          
+    mgrno INT,                  
+    hiredate DATE,              
+    sal DECIMAL(10, 2),          
+    depno INT,                  
+    FOREIGN KEY (depno) REFERENCES dep(depno)
+);
+
+CREATE TABLE project (
+    prono INT PRIMARY KEY,        
+    pname VARCHAR(255),          
+    ploc VARCHAR(255)          
+);
+
+CREATE TABLE assignedto (
+    empno INT,                    
+    prono INT,                  
+    jobrole VARCHAR(255),    
+    PRIMARY KEY (empno, prono),  
+    FOREIGN KEY (empno) REFERENCES emp(empno) ON DELETE CASCADE,  
+    FOREIGN KEY (prono) REFERENCES project(prono) ON DELETE CASCADE  
+);
+
+CREATE TABLE incentives (
+    empno INT,                  
+    incentivedate DATE,          
+    incentiveamount DECIMAL(10, 2),
+    PRIMARY KEY (incentivedate),
+    FOREIGN KEY (empno) REFERENCES emp(empno) ON DELETE CASCADE
+);
+
+INSERT INTO dep (depno, dloc, depname) VALUES
+(1, 'Hyderabad', 'Human Resources'),
+(2, 'Mysuru', 'Sales'),
+(3, 'Delhi', 'Marketing'),
+(4, 'Mumbai', 'Engineering');
+
+INSERT INTO emp (empno, ename, mgrno, hiredate, sal, depno) VALUES
+(101, 'John', NULL, '2015-01-10', 60000.00, 1),
+(102, 'Alice', 101, '2016-03-15', 55000.00, 1),
+(103, 'Ramesh', NULL, '2014-07-22', 70000.00, 2),
+(104, 'Sita', 103, '2017-05-30', 65000.00, 2),
+(105, 'Suresh', NULL, '2018-11-01', 80000.00, 3),
+(106, 'Avinash', 105, '2019-06-12', 75000.00, 3),
+(107, 'Sweta', NULL, '2020-02-10', 85000.00, 4),
+(108, 'Jack', 107, '2021-08-15', 90000.00, 4);
+
+INSERT INTO project (prono, pname, ploc) VALUES
+(201, 'Project Alpha', 'Hyderabad'),
+(202, 'Project Beta', 'Bengaluru'),
+(203, 'Project Gamma', 'Delhi'),
+(204, 'Project Delta', 'Mysuru');
+
+
+INSERT INTO assignedto (empno, prono, jobrole) VALUES
+(101, 201, 'Project Manager'),
+(102, 202, 'Team Lead'),
+(103, 203, 'Senior Developer'),
+(104, 204, 'Developer'),
+(105, 201, 'Project Manager'),
+(106, 202, 'Engineer'),
+(107, 203, 'Designer'),
+(108, 204, 'Tester');
+
+INSERT INTO incentives (empno, incentivedate, incentiveamount) VALUES
+(101, '2019-01-15', 1500.00),
+(102, '2018-02-20', 1200.00),
+(103, '2019-03-10', 1800.00),
+(104, '2019-01-25', 1100.00),
+(106, '2020-05-15', 1600.00),
+(107, '2023-06-30', 1400.00);
+
+SELECT DISTINCT a.empno
+FROM assignedto a
+JOIN project p ON a.prono = p.prono
+WHERE p.ploc IN ('Bengaluru', 'Hyderabad', 'Mysuru');
+
+SELECT e.empno
+FROM emp e
+LEFT JOIN incentives i ON e.empno = i.empno
+WHERE i.incentivedate IS NULL;
+
+SELECT e.ename AS employee_name, 
+       e.empno AS employee_number, 
+       d.depname AS department, 
+       a.jobrole AS job_role, 
+       d.dloc AS department_location, 
+       p.ploc AS project_location
+FROM emp e
+JOIN dep d ON e.depno = d.depno
+JOIN assignedto a ON e.empno = a.empno
+JOIN project p ON a.prono = p.prono
+WHERE d.dloc = p.ploc;
+
+
+SELECT e.ename AS manager_name, COUNT(emp.empno) AS num_employees
+FROM emp e
+JOIN emp emp ON e.empno = emp.mgrno
+GROUP BY e.empno
+ORDER BY num_employees DESC
+LIMIT 1;
+
+SELECT m.ename AS manager_name
+FROM emp m
+JOIN emp e ON m.empno = e.mgrno
+GROUP BY m.empno, m.ename, m.sal
+HAVING m.sal > AVG(e.sal);
+
+SELECT e.depno, e.ename AS second_level_manager
+FROM emp e
+JOIN emp m ON e.mgrno = m.empno
+WHERE m.mgrno IS NULL  -- Top-level managers
+AND e.mgrno IS NOT NULL -- Second-level managers
+ORDER BY e.depno;
+
+WITH IncentiveRank AS (
+    SELECT empno, incentivedate, incentiveamount,
+           ROW_NUMBER() OVER (ORDER BY incentiveamount DESC) AS incentive_rank
+    FROM incentives
+    WHERE incentivedate BETWEEN '2019-01-01' AND '2019-01-31'
+)
+SELECT e.empno, e.ename, e.hiredate, e.sal, e.depno, i.incentivedate, i.incentiveamount
+FROM IncentiveRank i
+JOIN emp e ON i.empno = e.empno
+WHERE i.incentive_rank = 2;
+
+SELECT e.empno, e.ename, e.depno,  m.empno AS manager_empno, m.ename AS manager_name
+FROM emp e
+JOIN emp m ON e.mgrno = m.empno
+WHERE e.depno = m.depno;
