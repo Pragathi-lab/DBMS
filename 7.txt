@@ -1,3 +1,5 @@
+create database supplier;
+use supplier;
 
 Creating tables:
 1] Suppliers:
